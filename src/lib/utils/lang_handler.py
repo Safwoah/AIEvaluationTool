@@ -3,9 +3,18 @@
 # Library utility to detect and translate text from one language to another using Google Translate API.
 
 from typing import Optional
-from googletrans import Translator
 import asyncio
 from iso639 import Language
+from langdetect import detect as _langdetect
+
+# googletrans often breaks with newer httpcore/httpx versions. Load lazily and fall back gracefully.
+_googletrans_available = False
+try:
+    from googletrans import Translator
+    _googletrans_available = True
+except Exception:
+    Translator = None
+
 
 def lang_translate(text: str, target_language: str = "en") -> str:
     """
@@ -14,19 +23,34 @@ def lang_translate(text: str, target_language: str = "en") -> str:
     :param target_language: The target language code (default is 'en' for English).
     :return: Translated text.
     """
-    translator = Translator()
-    translation = asyncio.run(translator.translate(text, dest=target_language))
-    return translation.text
+    if _googletrans_available:
+        try:
+            translator = Translator()
+            translation = asyncio.run(translator.translate(text, dest=target_language))
+            return translation.text
+        except Exception:
+            pass
+    return text
+
 
 def lang_detect(text: str) -> str:
     """
-    Detect the language of the given text using Google Translate API.
+    Detect the language of the given text using Google Translate API if available.
+    Falls back to langdetect if googletrans is unavailable.
     :param text: The text whose language is to be detected.
     :return: Detected language code.
     """
-    translator = Translator()
-    detection = asyncio.run(translator.detect(text))
-    return detection.lang
+    if _googletrans_available:
+        try:
+            translator = Translator()
+            detection = asyncio.run(translator.detect(text))
+            return detection.lang
+        except Exception:
+            pass
+    try:
+        return _langdetect(text)
+    except Exception:
+        return "unknown"
 
 def iso639_to_language_name(lang_code: str) -> Optional[str]:
     """

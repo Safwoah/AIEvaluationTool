@@ -4,7 +4,6 @@ import warnings
 import requests
 from typing import Optional, List, Dict, Any, Type
 from langdetect import detect
-from googletrans import Translator
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import json
 import torch
@@ -52,25 +51,31 @@ async def google_lang_translate(text: str, target_lang: str = "en") -> str:
     :param target_lang: The target language code (default is English)
     :return: The translated text in english
     """
-    translator = Translator()
     try:
+        from googletrans import Translator
+        translator = Translator()
         translation = await translator.translate(text, dest=target_lang)
         return translation.text
     except Exception as e:
-        logger.error(f"Error in translation: {e}")
+        logger.error(f"Error in translation via googletrans: %s", e)
         return text
         
 async def detect_text(text):
     """
     Helper function to translate text to a specified language.
     """
-    translator = Translator()
     try:
+        from googletrans import Translator
+        translator = Translator()
         language = await translator.detect(text)
         return language.lang
     except Exception as e:
-        logger.error(f"Error in language detection: {e}")
-        return "unknown"
+        logger.error(f"Error in language detection via googletrans: {e}")
+        try:
+            return detect(text)
+        except Exception as e2:
+            logger.error(f"Fallback langdetect failed: {e2}")
+            return "unknown"
 
 
 

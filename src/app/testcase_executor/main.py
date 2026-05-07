@@ -30,7 +30,13 @@ def is_error_response(response):
         "[error: connection refused]",
         "no response received"
     ]
-    return len(response) == 0 or any(indicator in response[0]['response'].lower() for indicator in error_indicators)
+    # Handle both string and list responses
+    if isinstance(response, str):
+        return len(response) == 0 or any(indicator in response.lower() for indicator in error_indicators)
+    elif isinstance(response, list) and len(response) > 0:
+        return any(indicator in response[0].get('response', '').lower() for indicator in error_indicators)
+    else:
+        return len(response) == 0
 
 def main():
     """ Main function to handle command-line arguments and execute test cases.
@@ -441,16 +447,19 @@ def main():
                     rundetail.status = "RUNNING"
                     db.add_or_update_testrun_detail(rundetail)
 
-                    # Initialize the InterfaceManagerClient with the provided configuration
-                    client = InterfaceManagerClient(base_url=interface_manager_url ,application_type=application_type, agent_name=agent_name)
-                    client.sync_config({
-                        "application_name": application_name,
-                        "application_type": application_type,
-                        "agent_name": agent_name,
-                        "application_url": application_url,
-                        "selenium_mode": selenium_mode
-                    })
-                    client.apply_server_config()
+                    # Initialize the InterfaceManagerClient for non-API targets only
+                    if application_type != "API":
+                        client = InterfaceManagerClient(base_url=interface_manager_url ,application_type=application_type, agent_name=agent_name)
+                        client.sync_config({
+                            "application_name": application_name,
+                            "application_type": application_type,
+                            "agent_name": agent_name,
+                            "application_url": application_url,
+                            "selenium_mode": selenium_mode
+                        })
+                        client.apply_server_config()
+                    else:
+                        client = None
 
                     try:
                         conv.prompt_ts = datetime.now().isoformat()
@@ -480,7 +489,7 @@ def main():
                             db.add_or_update_testrun_detail(rundetail)
                         else:
                             conv.response_ts = datetime.now().isoformat()
-                            conv.agent_response = agent_response[0]['response']
+                            conv.agent_response = agent_response if isinstance(agent_response, str) else (agent_response[0]['response'] if isinstance(agent_response, list) else str(agent_response))
                             db.add_or_update_conversation(conversation=conv)
 
                             rundetail.status = "COMPLETED"
@@ -540,16 +549,19 @@ def main():
                 run.status = "RUNNING"
                 db.add_or_update_testrun(run=run)
 
-                # Initialize the InterfaceManagerClient with the provided configuration
-                client = InterfaceManagerClient(base_url=interface_manager_url ,application_type=application_type, agent_name=agent_name)
-                client.sync_config({
-                    "application_name": application_name,
-                    "application_type": application_type,
-                    "agent_name": agent_name,
-                    "application_url": application_url,
-                    "selenium_mode": selenium_mode
-                })
-                client.apply_server_config()
+                # Initialize the InterfaceManagerClient for non-API targets only
+                if application_type != "API":
+                    client = InterfaceManagerClient(base_url=interface_manager_url ,application_type=application_type, agent_name=agent_name)
+                    client.sync_config({
+                        "application_name": application_name,
+                        "application_type": application_type,
+                        "agent_name": agent_name,
+                        "application_url": application_url,
+                        "selenium_mode": selenium_mode
+                    })
+                    client.apply_server_config()
+                else:
+                    client = None
 
                 # iterate through the test cases and execute
                 for testcase in testcases:
@@ -584,8 +596,20 @@ def main():
                         conv.prompt_ts = datetime.now().isoformat()
                         db.add_or_update_conversation(conversation=conv)
 
-                        response_from_agent = client.chat(chat_id = testcase.testcase_id, prompt_list=[message_to_agent])
-                        data = response_from_agent.json().get("response")
+                        if application_type == "API":
+                            # For API, call OpenAI/Gemini directly
+                            from openai import OpenAI
+                            openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+                            response = openai_client.chat.completions.create(
+                                model=agent_name,
+                                messages=[{"role": "user", "content": message_to_agent}]
+                            )
+                            agent_response = [{"response": response.choices[0].message.content}]
+                        else:
+                            response_from_agent = client.chat(chat_id = testcase.testcase_id, prompt_list=[message_to_agent])
+                            agent_response = response_from_agent.json().get("response")
+                        
+                        data = agent_response
                         agent_response = ""
 
                         if isinstance(data, list) and data:
@@ -598,6 +622,8 @@ def main():
                                 agent_response = data.get("file", "")
                             else:
                                 agent_response = ""
+                        elif isinstance(data, str):
+                            agent_response = data
 
 
                         # Check if the response is empty or indicates a chat not found
@@ -609,7 +635,7 @@ def main():
                             continue
 
                         conv.response_ts = datetime.now().isoformat()
-                        conv.agent_response = agent_response[0]['response']
+                        conv.agent_response = agent_response if isinstance(agent_response, str) else (agent_response[0]['response'] if isinstance(agent_response, list) else str(agent_response))
                         db.add_or_update_conversation(conversation=conv)
 
                         rundetail.status = "COMPLETED"
@@ -650,16 +676,19 @@ def main():
                 run.status = "RUNNING"
                 db.add_or_update_testrun(run=run)
 
-                # Initialize the InterfaceManagerClient with the provided configuration
-                client = InterfaceManagerClient(base_url=interface_manager_url ,application_type=application_type, agent_name=agent_name)
-                client.sync_config({
-                    "application_name": application_name,
-                    "application_type": application_type,
-                    "agent_name": agent_name,
-                    "application_url": application_url,
-                    "selenium_mode": selenium_mode
-                })
-                client.apply_server_config()
+                # Initialize the InterfaceManagerClient for non-API targets only
+                if application_type != "API":
+                    client = InterfaceManagerClient(base_url=interface_manager_url ,application_type=application_type, agent_name=agent_name)
+                    client.sync_config({
+                        "application_name": application_name,
+                        "application_type": application_type,
+                        "agent_name": agent_name,
+                        "application_url": application_url,
+                        "selenium_mode": selenium_mode
+                    })
+                    client.apply_server_config()
+                else:
+                    client = None
 
                 # iterate through the test cases and execute
                 for testcase in testcases:
@@ -694,9 +723,30 @@ def main():
                         conv.prompt_ts = datetime.now().isoformat()
                         db.add_or_update_conversation(conversation=conv)
 
-                        # send the prompt to the agent via the interface manager client
-                        response_from_agent = client.chat(chat_id = testcase.testcase_id, prompt_list=[message_to_agent])
-                        data = response_from_agent.json().get("response")
+                        # send the prompt to the agent via the interface manager client or direct API
+                        if application_type == "API":
+                            # For API, call OpenAI/Gemini directly
+                            from openai import OpenAI
+                            openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+                            response = openai_client.chat.completions.create(
+                                model=agent_name,
+                                messages=[{"role": "user", "content": message_to_agent}]
+                            )
+                            agent_response = response.choices[0].message.content
+                        else:
+                            response_from_agent = client.chat(chat_id = testcase.testcase_id, prompt_list=[message_to_agent])
+                            agent_response = response_from_agent.json().get("response")
+                        
+                        # Handle both API and non-API response formats
+                        if isinstance(agent_response, str):
+                            # API response is a string
+                            data = agent_response
+                        elif isinstance(agent_response, list) and agent_response:
+                            # Non-API response is a list
+                            data = agent_response[0].get("response", {})
+                        else:
+                            data = agent_response
+                        
                         agent_response = ""
 
                         if isinstance(data, list) and data:
@@ -709,6 +759,10 @@ def main():
                                 agent_response = data.get("file", "")
                             else:
                                 agent_response = ""
+                        elif isinstance(data, str):
+                            agent_response = data
+                        elif isinstance(data, str):
+                            agent_response = data
 
 
                         # Check if the response is empty or indicates a chat not found
@@ -720,7 +774,7 @@ def main():
                             continue
 
                         conv.response_ts = datetime.now().isoformat()
-                        conv.agent_response = agent_response[0]['response']
+                        conv.agent_response = agent_response if isinstance(agent_response, str) else (agent_response[0]['response'] if isinstance(agent_response, list) else str(agent_response))
                         db.add_or_update_conversation(conversation=conv)
 
                         rundetail.status = "COMPLETED"
@@ -733,7 +787,8 @@ def main():
                         continue
 
                 try:
-                    client.close()
+                    if application_type != "API" and client is not None:
+                        client.close()
                 except Exception as e:
                     logger.error(f"Error closing the client connection: {e}")
 
