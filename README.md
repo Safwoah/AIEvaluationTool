@@ -1,3 +1,16 @@
+# Fellowship Submission Notice
+
+> **This is a fork of [CeRAI's AIEvaluationTool](https://github.com/cerai-iitm/AIEvaluationTool) used as the basis for a Gates Foundation AI Fellowship – India 2026 technical screening submission.**
+>
+> - **Submission report:** [`REPORT.md`](./REPORT.md) (also rendered live at **[safwoah.github.io/AIEvaluationTool/](https://safwoah.github.io/AIEvaluationTool/)**)
+> - **Raw evaluation results:** [`evaluation_results.json`](./evaluation_results.json)
+> - **Working branch:** [`lightweight-eval-working`](https://github.com/Safwoah/AIEvaluationTool/tree/lightweight-eval-working)
+> - **Author:** Safwa Jabbar
+>
+> The original CeRAI README continues below.
+
+---
+
 # Conversational AI Evaluation Tool - v2.0
 
 ## 1. Overview
