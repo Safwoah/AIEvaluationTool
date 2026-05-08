@@ -59,4 +59,9 @@ chroma_langchain_db/
 data/AIEvaluationData.db
 
 reports/
-chrome-data/
+chrome-data/venv_full/
+*.env
+.env
+venv_full/
+*.env
+.env
