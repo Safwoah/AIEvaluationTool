@@ -1,7 +1,7 @@
 # Evaluation of CeRAI AIEvaluationTool Using OpenAI as Test Endpoint
 
 **Author:** Safwa Jabbar
-**Date:** May 9, 2026
+**Date:** May 8, 2026
 **Assignment:** Gates Foundation AI Fellowship – India 2026, Technical Screening
 
 ## Executive Summary
